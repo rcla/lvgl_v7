@@ -13,7 +13,7 @@ program LVGLDemo2;
 uses
   InitUnit, RaspberryPi3, GlobalConst, GlobalTypes, GlobalConfig, Platform,
   SysUtils, Threads, Mouse, Framebuffer, uTFTP, SysCalls,
-  Winsock2, ulvgl;
+  Winsock2, f_cursor_icon, ulvgl;
 
 {$linklib lvgl}
 {$hints off}
@@ -771,10 +771,10 @@ begin
   indev_drv.read_cb := @input_read;
   // Register the driver in LVGL and save the created input device object*/
   mouse_indev := lv_indev_drv_register (@indev_drv);
-  // Quick cursor
-  cursor := lv_label_create (lv_scr_act, nil);
-  lv_label_set_text (cursor, '*');
-  lv_obj_align (cursor, nil, LV_ALIGN_CENTER, 0, 0);
+
+  // Add cursor icon
+  cursor := lv_img_create (lv_scr_act, nil);
+  lv_img_set_src(cursor, @cursor_icon);
   lv_indev_set_cursor (mouse_indev, cursor);
 
   lv_demo_widgets;
