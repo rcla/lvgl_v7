@@ -96,6 +96,14 @@ const
 
   _LV_EVENT_LAST                            = 22;   // Number of events
 
+  // LABEL Long mode behaviors enumeration
+  LV_LABEL_LONG_EXPAND                      = 0;    // Expand the object size to the text size
+  LV_LABEL_LONG_BREAK                       = 1;    // Keep the object width, break the too long lines and expand the object height
+  LV_LABEL_LONG_DOT                         = 2;    // Keep the size and write dots at the end if the text is too long
+  LV_LABEL_LONG_SROLL                       = 3;    // Keep the size and roll the text back and forth
+  LV_LABEL_LONG_SROLL_CIRC                  = 4;    // Keep the size and roll the text circularly
+  LV_LABEL_LONG_CROP                        = 5;    // Keep the size and crop the text out of it
+
   // General signals enumeration
   LV_SIGNAL_CLEANUP                         = 0;    // Object is being deleted
   LV_SIGNAL_CHILD_CHG                       = 1;    // Child was removed/added
@@ -523,6 +531,14 @@ const
   LV_ROLLER_MODE_NORMAL                     = 0; // Normal mode (roller ends at the end of the options).
   LV_ROLLER_MODE_INIFINITE                  = 1; // Infinite mode (roller can be scrolled forever).
 
+  LV_IMG_CF_UNKNOWN = 0;
+  LV_IMG_CF_RAW = 1;
+  LV_IMG_CF_RAW_ALPHA = 2;
+  LV_IMG_CF_RAW_CHROMA_KEYED = 3;
+  LV_IMG_CF_TRUE_COLOR = 4;
+  LV_IMG_CF_TRUE_COLOR_ALPHA = 5;
+  LV_IMG_CF_TRUE_COLOR_CHROMA_KEYED = 6;
+
 type
   Tlv_obj = record    // may not need to elaborate as may not need to access directly    should be 68 bytes in size
   end;
@@ -549,7 +565,7 @@ type
   Tlv_event = Tuint8;
   Tlv_opa = Tuint8;
   Plv_opa = ^Tlv_opa;
-  Tlv_event_cb = procedure (obj : Plv_obj; event : Tlv_event); cdecl;
+  Tlv_event_cb = procedure (obj : Plv_obj; event : Tlv_event); //cdecl;
   Plv_event_cb = ^Tlv_event_cb;
   Tlv_signal = Tuint8;
   Tlv_design_mode = Tuint8;
@@ -692,17 +708,26 @@ type
 // ----------- lv_canvas.h ------------
   Tlv_canvas_style = Tuint8;
   Tlv_img_cf = Tuint8;                  // colour format
-  Tlv_img_header = record
-    data : Tuint32;                     // bit packed
-{   The first 8 bit is very important to distinguish the different source types.
-    For more info see `lv_img_get_src_type()` in lv_img.c
-    cf : 5           Color format: See lv_img_color_format
-    always_zero : 3  It the upper bits of the first byte. Always zero to look like a
-                       non-printable character
-    Reserved : 2;    Reserved to be used later
-    w : 11           Width of the image map
-    h : 11           Height of the image map }
+
+
+// ------- lv_img_header --------------
+  {   The first 8 bit is very important to distinguish the different source types.
+      For more info see `lv_img_get_src_type()` in lv_img.c
+      cf : 5           Color format: See lv_img_color_format
+      always_zero : 3  It the upper bits of the first byte. Always zero to look like a
+                         non-printable character
+      Reserved : 2;    Reserved to be used later
+      w : 11           Width of the image map
+      h : 11           Height of the image map }
+
+  Tlv_img_header = bitpacked record
+    cf: 0..(1 shl 5) -1;
+    always_zero: 0..(1 shl 3) -1;
+    reserved: 0..(1 shl 2) -1;
+    w: 0..(1 shl 11) -1;
+    h: 0..(1 shl 11) -1;
   end;
+  
   Plv_img_header = ^Tlv_img_header;
 
   Tlv_img_dsc = record
@@ -710,6 +735,7 @@ type
     data_size : Tuint32;
     data : Puint8;
   end;
+
   Plv_img_dsc = ^Tlv_img_dsc;
 
   Tlv_img_style = Tuint8;
@@ -954,6 +980,22 @@ const
   LV_THEME_DEFAULT_COLOR_PRIMARY : Tlv_color = (blue : $01; green : $A2; red : $B1; alpha : $FF); // lv_color_hex(0x01a2b1)
   LV_THEME_DEFAULT_COLOR_SECONDARY : Tlv_color = (blue : $44; green : $D1; red : $B6; alpha : $FF); // lv_color_hex(0x44d1b6)
 
+//lv_img
+function lv_img_create (parent : Plv_obj; copy : Plv_obj) : Plv_obj; cdecl; external;
+procedure lv_img_set_src (img : Plv_obj; src_img : Pointer); cdecl; external;
+
+//lv_btn
+procedure lv_btn_set_checkable (btn : Plv_obj; tgl : Boolean); cdecl; external;
+
+//lv_imgbtn
+function lv_imgbtn_create (parent : Plv_obj; copy : Plv_obj) : Plv_obj; cdecl; external;
+procedure lv_imgbtn_set_src (imgbtn : Plv_obj; state : Tlv_btn_state; src_img : Pointer); cdecl; external;
+
+//lv_keyboard
+function lv_keyboard_create (parent : Plv_obj; copy : Plv_obj) : Plv_obj; cdecl; external;
+procedure lv_keyboard_set_textarea (kb : Plv_obj; ta : Plv_obj); cdecl; external;
+procedure lv_keyboard_set_cursor_manage (kb : Plv_obj; en : Boolean); cdecl; external;
+procedure lv_keyboard_def_event_cb (kb : Plv_obj; event : Tlv_event); cdecl; external;
 
 procedure lv_log_register_print_cb (print_cb : Tlv_log_print_g_cb); cdecl; external;
 procedure lv_init; cdecl; external;
@@ -1220,7 +1262,6 @@ procedure lv_canvas_draw_polygon (canvas : Plv_obj; const lv_point_t points[], u
 procedure lv_canvas_draw_arc (canvas : Plv_obj; lv_coord_t x, lv_coord_t y, lv_coord_t r, int32_t start_angle,
                         int32_t end_angle, const lv_draw_line_dsc_t * arc_draw_dsc);
       *)
-
 
 function lv_cont_create (par : Plv_obj; const copy : Plv_obj) : Plv_obj; cdecl; external;
 procedure lv_cont_set_layout (cont : Plv_obj; layout : Tlv_layout); cdecl; external;
@@ -1605,9 +1646,9 @@ procedure lv_chart_refresh (chart : Plv_obj); cdecl; external;
 function lv_checkbox_create (par : Plv_obj; const copy : Plv_obj) : Plv_obj; cdecl; external;
 procedure lv_checkbox_set_text(cb : Plv_obj; const txt : PChar); cdecl; external;
 procedure lv_checkbox_set_text_static(cb : Plv_obj; const txt : PChar); cdecl; external;
-procedure lv_checkbox_set_checked (cb : Plv_obj; checked : LongBool);
-procedure lv_checkbox_set_disabled (cb : Plv_obj);
-procedure lv_checkbox_set_state (cb : Plv_obj; state : Tlv_btn_state);
+procedure lv_checkbox_set_checked (cb : Plv_obj; checked : LongBool); cdecl; external;
+procedure lv_checkbox_set_disabled (cb : Plv_obj); cdecl; external;
+procedure lv_checkbox_set_state (cb : Plv_obj; state : Tlv_btn_state); cdecl; external;
 function lv_checkbox_get_text (const cb : Plv_obj) : PChar; cdecl; external;
 function lv_checkbox_is_checked (const cb : Plv_obj) : LongBool;
 function lv_checkbox_is_inactive (const cb : Plv_obj) : LongBool;
@@ -2006,7 +2047,23 @@ procedure lv_style_set_scale_end_color (style : Plv_style; state : Tlv_state; va
 
 function lv_dpx (n : Tlv_coord) : Tlv_coord;
 
+procedure material_init(mflags : Tuint32; Color_Primary : Tuint32 = $01a2b1;  Color_Secundary  : Tuint32 = $44d1b6);
+
 implementation
+
+procedure material_init(mflags : Tuint32; Color_Primary : Tuint32 = $01a2b1;  Color_Secundary  : Tuint32 = $44d1b6);
+var
+  theme_p : Plv_theme;
+  c_primary : Tlv_color;
+  c_secundary : Tlv_color;
+begin
+  c_primary.full := Color_Primary;
+  c_secundary.full := Color_Secundary;
+
+  theme_p := lv_theme_material_init(c_primary,c_secundary,mflags,
+                                       lv_theme_get_font_small(), lv_theme_get_font_normal(), lv_theme_get_font_subtitle(),
+                                       lv_theme_get_font_title());
+end;
 
 procedure lv_btn_set_layout (btn : Plv_obj; layout : Tlv_layout);
 begin
@@ -3588,18 +3645,18 @@ begin
   Result := lv_page_get_anim_time (list);
 end;
 
-procedure lv_checkbox_set_checked (cb : Plv_obj; checked : LongBool);
+procedure lv_checkbox_set_checked2 (cb : Plv_obj; checked : LongBool);
 begin
   if checked then
     lv_btn_set_state (cb, LV_BTN_STATE_CHECKED_RELEASED)
   else
     lv_btn_set_state (cb, LV_BTN_STATE_RELEASED);
 end;
-procedure lv_checkbox_set_disabled (cb : Plv_obj);
+procedure lv_checkbox_set_disabled2 (cb : Plv_obj);
 begin
   lv_btn_set_state (cb, LV_BTN_STATE_DISABLED);
 end;
-procedure lv_checkbox_set_state (cb : Plv_obj; state : Tlv_btn_state);
+procedure lv_checkbox_set_state2 (cb : Plv_obj; state : Tlv_btn_state);
 begin
   lv_btn_set_state (cb, state);
 end;
