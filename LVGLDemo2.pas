@@ -58,7 +58,7 @@ begin
 end;
 
 
-procedure slider_event_cb (slider : Plv_obj; e : Tlv_event); cdecl;
+procedure slider_event_cb (slider : Plv_obj; e : Tlv_event);
 var
   s : string;
 begin
