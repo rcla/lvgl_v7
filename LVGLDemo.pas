@@ -174,23 +174,31 @@ end;
 
 begin
   fl := nil;
-  FramebufferDevice := FramebufferDeviceGetDefault;
-  FramebufferDeviceGetProperties (FramebufferDevice, @FramebufferProperties);
-  FramebufferDeviceFillRect (FramebufferDevice, 0, 0, FramebufferProperties.PhysicalWidth,
-                            FramebufferProperties.PhysicalHeight, COLOR_BLACK, FRAMEBUFFER_TRANSFER_DMA);
-  while not DirectoryExists ('C:\') do Sleep (100);
-  IPAddress := WaitForIPComplete;
+  {Get the default framebuffer device}
+  FramebufferDevice:=FramebufferDeviceGetDefault;
 
-  ScreenWidth := 800;
-  ScreenHeight := 480;
+  {Get the properties of the default framebuffer}
+  FramebufferDeviceGetProperties(FramebufferDevice,@FramebufferProperties);
+
+  {Get the screen width and height from the properties}
+  ScreenWidth:=FramebufferProperties.PhysicalWidth;
+  ScreenHeight:=FramebufferProperties.PhysicalHeight;
+
+  FramebufferDeviceFillRect (FramebufferDevice, 0, 0, ScreenWidth,  ScreenHeight, COLOR_BLACK, FRAMEBUFFER_TRANSFER_DMA);
+
+  while not DirectoryExists ('C:\') do Sleep (100);
+  //IPAddress := WaitForIPComplete;
+
   buf := GetMem (ScreenWidth * ScreenHeight * 4);
   VideoBuffer := GetMem (ScreenWidth * ScreenHeight * 4);
 
   lv_init;                                                  // initialise lv
-  lv_log_register_print_cb (@my_print_cb);                  // set debug print callback
+  //lv_log_register_print_cb (@my_print_cb);                  // set debug print callback
   lv_disp_buf_init (@disp_buf, buf, nil, ScreenWidth * ScreenHeight * 4);
   lv_disp_drv_init (@disp_drv);
   disp_drv.buffer := @disp_buf;
+  disp_drv.hor_res := ScreenWidth;
+  disp_drv.ver_res := ScreenHeight;
   disp_drv.flush_cb := @ultibo_fbddev_flush;
   lv_disp_drv_register (@disp_drv);
   lv_indev_drv_init (@indev_drv);      // Basic initialization
